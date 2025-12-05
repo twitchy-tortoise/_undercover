@@ -85,6 +85,45 @@ describe Undercover::Report do
     expect(report.results.keys.sort).to eq(%w[class.rb module.rb sinatra.rb])
   end
 
+  it 'returns self from build for chaining' do
+    result = report.build
+    expect(result).to eq(report)
+  end
+
+  it 'provides unflagged_results accessor' do
+    report.build
+    unflagged = report.unflagged_results
+    expect(unflagged).to be_an(Array)
+    expect(unflagged.size).to be > 0
+    expect(unflagged.all? { |r| !r.flagged? }).to be true
+  end
+
+  it 'provides results_count method' do
+    report.build
+    expect(report.results_count).to eq(report.all_results.size)
+    expect(report.results_count).to be > 0
+  end
+
+  it 'returns empty array for all_results when no build' do
+    empty_report = described_class.new(changeset, options)
+    expect(empty_report.all_results).to eq([])
+  end
+
+  it 'returns zero for results_count when no build' do
+    empty_report = described_class.new(changeset, options)
+    expect(empty_report.results_count).to eq(0)
+  end
+
+  it 'returns empty array for unflagged_results when no build' do
+    empty_report = described_class.new(changeset, options)
+    expect(empty_report.unflagged_results).to eq([])
+  end
+
+  it 'returns empty array for flagged_results when no build' do
+    empty_report = described_class.new(changeset, options)
+    expect(empty_report.flagged_results).to eq([])
+  end
+
   context 'with mock changeset' do
     let(:changeset) do
       mock_changeset = instance_double(Undercover::Changeset)
@@ -137,6 +176,23 @@ describe Undercover::Report do
 
       expect(warnings[0].coverage_f).to eq(0.0)
       expect(warnings[1].coverage_f).to eq(0.0)
+    end
+
+    it 'handles multiple file types in glob filters' do
+      options.glob_allow_filters = ['*.rb', '*.rake']
+      options.glob_reject_filters = []
+      options.lcov = 'spec/fixtures/test_two_patches.lcov'
+      report.build
+      expect(report.results).not_to be_empty
+    end
+
+    it 'respects glob reject filters' do
+      options.glob_allow_filters = ['*.rb', '*.rake']
+      options.glob_reject_filters = ['test_two_patches.rb']
+      options.lcov = 'spec/fixtures/test_two_patches.lcov'
+      report.build
+      # The test_two_patches.rb file should be rejected
+      expect(report.results.keys).not_to include('test_two_patches.rb')
     end
   end
 end
