@@ -41,7 +41,8 @@ module Undercover
                   :run_mode,
                   :file_scope,
                   :glob_allow_filters,
-                  :glob_reject_filters
+                  :glob_reject_filters,
+                  :max_warnings
 
     def initialize
       @run_mode = DIFF_TRIGGER_LINE
@@ -75,6 +76,7 @@ module Undercover
         git_dir_option(opts)
         compare_option(opts)
         ruby_syntax_option(opts)
+        max_warnings_option(opts)
         file_filters(opts)
       end.parse(args)
 
@@ -134,6 +136,13 @@ module Undercover
       desc = "Ruby syntax version, one of: #{versions}"
       parser.on('-r', '--ruby-syntax ver', desc) do |version|
         self.syntax_version = version.strip
+      end
+    end
+
+    def max_warnings_option(parser)
+      desc = 'Maximum number of warnings to report (unlimited by default)'
+      parser.on('-m', '--max-warnings count', Integer, desc) do |count|
+        self.max_warnings = count
       end
     end
 

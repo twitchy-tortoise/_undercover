@@ -11,6 +11,16 @@ describe Undercover::Formatter do
       formatted = described_class.new(results).to_s
       expect(formatted).to include('No coverage is missing in latest changes')
     end
+
+    it 'reports zero warnings count' do
+      formatter = described_class.new(results)
+      expect(formatter.warnings_count).to eq(0)
+    end
+
+    it 'warnings? returns false' do
+      formatter = described_class.new(results)
+      expect(formatter.warnings?).to be false
+    end
   end
 
   let(:lcov) do
@@ -33,6 +43,16 @@ describe Undercover::Formatter do
       expect(formatted).to include('coverage: 87.5%')
       expect(formatted).to match(/branches:.*1\/2.*$/)
       expect(formatted).to match(/branches:.*2\/2.*$/)
+    end
+
+    it 'reports correct warnings count' do
+      formatter = described_class.new(results)
+      expect(formatter.warnings_count).to eq(1)
+    end
+
+    it 'warnings? returns true' do
+      formatter = described_class.new(results)
+      expect(formatter.warnings?).to be true
     end
   end
 

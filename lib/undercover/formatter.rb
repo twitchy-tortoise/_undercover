@@ -12,6 +12,14 @@ module Undercover
       ([warnings_header] + formatted_warnings).join("\n")
     end
 
+    def warnings_count
+      @results.size
+    end
+
+    def warnings?
+      @results.any?
+    end
+
     private
 
     def formatted_warnings

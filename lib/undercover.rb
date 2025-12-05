@@ -17,13 +17,15 @@ require 'undercover/version'
 module Undercover
   class Report
     extend Forwardable
+
     def_delegators :changeset, :validate
 
     attr_reader :changeset,
                 :lcov,
                 :results,
                 :code_dir,
-                :glob_filters
+                :glob_filters,
+                :max_warnings
 
     # Initializes a new Undercover::Report
     #
@@ -37,12 +39,14 @@ module Undercover
         allow: opts.glob_allow_filters,
         reject: opts.glob_reject_filters
       }
+      @max_warnings = opts.max_warnings
       @loaded_files = {}
       @results = {}
     end
 
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def build
+      warnings_count = 0
       changeset.each_changed_line do |filepath, line_no|
         dist_from_line_no = lambda do |res|
           return BigDecimal::INFINITY if line_no < res.first_line
@@ -61,7 +65,7 @@ module Undercover
         next unless loaded_files[filepath]
 
         res = loaded_files[filepath].min(&dist_from_line_no_sorter)
-        res.flag if res&.uncovered?(line_no)
+        warnings_count += 1 if res&.uncovered?(line_no) && flag_result(res, warnings_count)
         results[filepath] ||= Set.new
         results[filepath] << res
       end
@@ -76,11 +80,28 @@ module Undercover
     end
 
     def all_results
+      return [] if results.empty?
+
       results.values.map(&:to_a).flatten
     end
 
     def flagged_results
-      all_results.select(&:flagged?)
+      all = all_results
+      return [] if all.empty?
+
+      all.select(&:flagged?)
+    end
+
+    def unflagged_results
+      return [] if results.empty?
+
+      all_results.reject(&:flagged?)
+    end
+
+    def results_count
+      return 0 if results.nil? || results.empty?
+
+      all_results.size
     end
 
     def inspect
@@ -91,6 +112,12 @@ module Undercover
     private
 
     attr_reader :loaded_files
+
+    def flag_result(result, warnings_count)
+      should_flag = max_warnings.nil? || warnings_count < max_warnings
+      result.flag if should_flag
+      should_flag
+    end
 
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
     def load_and_parse_file(filepath)
@@ -116,7 +143,10 @@ module Undercover
 
     def include_file?(filepath)
       fnmatch = proc { |glob| File.fnmatch(glob, filepath) }
-      glob_filters[:allow].any?(fnmatch) && glob_filters[:reject].none?(fnmatch)
+      allowed = glob_filters[:allow].any?(fnmatch)
+      rejected = glob_filters[:reject].any?(fnmatch)
+
+      allowed && !rejected
     end
   end
 end
