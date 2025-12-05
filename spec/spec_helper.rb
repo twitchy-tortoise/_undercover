@@ -11,6 +11,8 @@ SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new(
 )
 SimpleCov.start do
   enable_coverage(:branch)
+  minimum_coverage line: 90, branch: 90
+  refuse_coverage_drop :line, :branch
   add_filter(/^\/spec\//)
 end
 
